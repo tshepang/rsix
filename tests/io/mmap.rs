@@ -2,10 +2,10 @@
 
 #[test]
 fn test_mmap() {
+    use core::ptr::null_mut;
+    use core::slice;
     use rsix::fs::{cwd, openat, Mode, OFlags};
     use rsix::io::{mmap, munmap, write, MapFlags, ProtFlags};
-    use std::ptr::null_mut;
-    use std::slice;
 
     let tmp = tempfile::tempdir().unwrap();
     let dir = openat(&cwd(), tmp.path(), OFlags::RDONLY, Mode::empty()).unwrap();

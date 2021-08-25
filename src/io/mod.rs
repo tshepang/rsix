@@ -5,11 +5,7 @@ use crate::imp;
 use imp::io::Tcflag;
 
 #[allow(unused_imports)]
-#[cfg(unix)]
-pub(crate) use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-#[allow(unused_imports)]
-#[cfg(target_os = "wasi")]
-pub(crate) use std::os::wasi::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+pub(crate) use crate::std_os_io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
 mod close;
 mod error;
@@ -73,11 +69,15 @@ pub use pipe::{pipe_with, PipeFlags};
 pub use poll::{poll, PollFd, PollFlags};
 #[cfg(any(target_os = "android", target_os = "linux"))]
 pub use procfs::proc_self_fd;
-pub use read_write::{pread, pwrite, read, readv, write, writev};
+pub use read_write::{pread, pwrite, read, write};
+#[cfg(feature = "vectored")]
 #[cfg(not(target_os = "redox"))]
 pub use read_write::{preadv, pwritev};
+#[cfg(feature = "vectored")]
 #[cfg(any(linux_raw, all(libc, any(target_os = "android", target_os = "linux"))))]
 pub use read_write::{preadv2, pwritev2, ReadWriteFlags};
+#[cfg(feature = "vectored")]
+pub use read_write::{readv, writev};
 pub use stdio::{stderr, stdin, stdout, take_stderr, take_stdin, take_stdout};
 #[cfg(any(linux_raw, all(libc, any(target_os = "android", target_os = "linux"))))]
 pub use userfaultfd::{userfaultfd, UserfaultfdFlags};

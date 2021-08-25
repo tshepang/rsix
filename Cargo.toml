@@ -21,17 +21,25 @@ rustc_version = "0.4.0"
 [dependencies]
 bitflags = "1.3.2"
 itoa = { version = "0.4.7", default-features = false }
-io-lifetimes = { version = "0.3.0", default-features = false }
+io-lifetimes = { git = "https://github.com/sunfishcode/io-lifetimes", branch = "no_std_demo", default-features = false }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
-once_cell = "1.5.2"
+once_cell = { version = "1.5.2", default-features = false }
 
 [target.'cfg(any(rsix_use_libc, not(all(any(target_os = "linux"), any(target_arch = "x86", all(target_arch = "x86_64", not(target_pointer_width = "32")), target_arch = "aarch64", target_arch = "riscv64")))))'.dependencies]
 errno = "0.2.7"
 libc = { version = "0.2.98", features = ["extra_traits"] }
 
 [target.'cfg(all(not(rsix_use_libc), any(target_os = "linux"), any(target_arch = "x86", all(target_arch = "x86_64", not(target_pointer_width = "32")), target_arch = "aarch64", target_arch = "riscv64")))'.dependencies]
-linux-raw-sys = { version = "0.0.23", features = ["v5_4", "v5_11"] }
+linux-raw-sys = { version = "0.0.23", default-features = false, features = ["general", "errno", "v5_4", "v5_11"] }
+
+# Crates to polyfill parts of std in no_std mode.
+cty = { version = "0.2.1", optional = true }
+embedded-ffi = { version = "0.1.2", optional = true }
+unix_path = { version = "1.0.1", default-features = false, optional = true }
+unix_str = { version = "1.0.0", optional = true }
+core2 = { version = "0.3.1", default-features = false, optional = true }
+no-std-net = { version = "0.5.0", optional = true }
 
 [dev-dependencies]
 atty = "0.2.14"
@@ -43,7 +51,20 @@ libc = "0.2.98"
 criterion = "0.3"
 
 [features]
-default = []
+default = ["std", "vectored"]
+std = ["io-lifetimes/std", "once_cell/std", "linux-raw-sys/std"]
+vectored = ["std"]
+no_std_demo = [
+    "cty",
+    "embedded-ffi/alloc",
+    "unix_path/alloc",
+    "unix_str",
+    "core2",
+    "no-std-net",
+    "io-lifetimes/no_std_demo",
+    "once_cell/alloc",
+    "linux-raw-sys/no_std",
+]
 
 # Expose io-lifetimes' features for third-party crate impls.
 async-std = ["io-lifetimes/async-std"]

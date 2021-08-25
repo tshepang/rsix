@@ -6,9 +6,9 @@
 #![allow(unsafe_code)]
 
 use super::AddressFamily;
+use crate::std_ffi::CString;
 use crate::{io, path};
-use std::ffi::CString;
-use std::fmt;
+use core::fmt;
 
 /// `struct in_addr`
 #[repr(transparent)]
@@ -17,9 +17,14 @@ use std::fmt;
 pub struct Ipv4Addr(pub(crate) linux_raw_sys::general::in_addr);
 
 impl Ipv4Addr {
-    pub const BROADCAST: Self = Self::from_std(std::net::Ipv4Addr::BROADCAST);
-    pub const LOCALHOST: Self = Self::from_std(std::net::Ipv4Addr::LOCALHOST);
-    pub const UNSPECIFIED: Self = Self::from_std(std::net::Ipv4Addr::UNSPECIFIED);
+    // TODO: Enable these for no_std_demo once
+    // <https://github.com/dunmatt/no-std-net/pull/14> is available.
+    #[cfg(feature = "std")]
+    pub const BROADCAST: Self = Self::from_std(crate::std_net::Ipv4Addr::BROADCAST);
+    #[cfg(feature = "std")]
+    pub const LOCALHOST: Self = Self::from_std(crate::std_net::Ipv4Addr::LOCALHOST);
+    #[cfg(feature = "std")]
+    pub const UNSPECIFIED: Self = Self::from_std(crate::std_net::Ipv4Addr::UNSPECIFIED);
 
     /// Construct a new IPv4 address from 4 octets.
     #[inline]
@@ -30,7 +35,7 @@ impl Ipv4Addr {
     }
 
     #[inline]
-    pub const fn from_std(std: std::net::Ipv4Addr) -> Self {
+    pub const fn from_std(std: crate::std_net::Ipv4Addr) -> Self {
         let raw: u32 = u32::from_be_bytes(std.octets());
         Self(linux_raw_sys::general::in_addr {
             s_addr: raw.to_be(),
@@ -38,9 +43,9 @@ impl Ipv4Addr {
     }
 
     #[inline]
-    pub const fn into_std(self) -> std::net::Ipv4Addr {
+    pub const fn into_std(self) -> crate::std_net::Ipv4Addr {
         let octets = self.0.s_addr.to_ne_bytes();
-        std::net::Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
+        crate::std_net::Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
     }
 
     #[inline]
@@ -119,8 +124,12 @@ impl fmt::Debug for Ipv4Addr {
 pub struct Ipv6Addr(pub(crate) linux_raw_sys::general::in6_addr);
 
 impl Ipv6Addr {
-    pub const LOCALHOST: Self = Self::from_std(std::net::Ipv6Addr::LOCALHOST);
-    pub const UNSPECIFIED: Self = Self::from_std(std::net::Ipv6Addr::UNSPECIFIED);
+    // TODO: Enable these for no_std_demo once
+    // <https://github.com/dunmatt/no-std-net/pull/14> is available.
+    #[cfg(feature = "std")]
+    pub const LOCALHOST: Self = Self::from_std(crate::std_net::Ipv6Addr::LOCALHOST);
+    #[cfg(feature = "std")]
+    pub const UNSPECIFIED: Self = Self::from_std(crate::std_net::Ipv6Addr::UNSPECIFIED);
 
     /// Construct a new IPv6 address from eight 16-bit segments.
     #[allow(clippy::many_single_char_names, clippy::too_many_arguments)]
@@ -143,7 +152,7 @@ impl Ipv6Addr {
     }
 
     #[inline]
-    pub const fn from_std(std: std::net::Ipv6Addr) -> Self {
+    pub const fn from_std(std: crate::std_net::Ipv6Addr) -> Self {
         Self(linux_raw_sys::general::in6_addr {
             in6_u: linux_raw_sys::general::in6_addr__bindgen_ty_1 {
                 u6_addr8: std.octets(),
@@ -153,9 +162,9 @@ impl Ipv6Addr {
 
     #[cfg(const_fn_union)]
     #[inline]
-    pub const fn into_std(self) -> std::net::Ipv6Addr {
+    pub const fn into_std(self) -> crate::std_net::Ipv6Addr {
         let segments = self.segments();
-        std::net::Ipv6Addr::new(
+        crate::std_net::Ipv6Addr::new(
             segments[0],
             segments[1],
             segments[2],
@@ -169,9 +178,9 @@ impl Ipv6Addr {
 
     #[cfg(not(const_fn_union))]
     #[inline]
-    pub fn into_std(self) -> std::net::Ipv6Addr {
+    pub fn into_std(self) -> crate::std_net::Ipv6Addr {
         let segments = self.segments();
-        std::net::Ipv6Addr::new(
+        crate::std_net::Ipv6Addr::new(
             segments[0],
             segments[1],
             segments[2],
@@ -312,7 +321,8 @@ impl SocketAddrV4 {
 
 impl fmt::Display for SocketAddrV4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        std::net::SocketAddrV4::new(self.address().const_clone().into_std(), self.port()).fmt(fmt)
+        crate::std_net::SocketAddrV4::new(self.address().const_clone().into_std(), self.port())
+            .fmt(fmt)
     }
 }
 
@@ -384,7 +394,7 @@ impl SocketAddrV6 {
 
 impl fmt::Display for SocketAddrV6 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        std::net::SocketAddrV6::new(
+        crate::std_net::SocketAddrV6::new(
             self.address().const_clone().into_std(),
             self.port(),
             self.flowinfo(),
@@ -438,9 +448,9 @@ impl SocketAddrUnix {
         };
         let bytes = self.path.as_bytes();
         for (i, b) in bytes.iter().enumerate() {
-            encoded.sun_path[i] = *b as std::os::raw::c_char;
+            encoded.sun_path[i] = *b as crate::c_types::c_char;
         }
-        encoded.sun_path[bytes.len()] = b'\0' as std::os::raw::c_char;
+        encoded.sun_path[bytes.len()] = b'\0' as crate::c_types::c_char;
         encoded
     }
 }

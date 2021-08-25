@@ -9,6 +9,7 @@
     target_os = "wasi",
 )))]
 
+use crate::std_path::Path;
 use rsix::fs::{cwd, unlinkat, AtFlags};
 use rsix::io::{read, write};
 use rsix::net::{
@@ -16,7 +17,6 @@ use rsix::net::{
     SocketType,
 };
 use rsix::path::DecInt;
-use std::path::Path;
 use std::str::FromStr;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;

@@ -3,9 +3,9 @@
 use super::offset::libc_off_t;
 use crate::io;
 use crate::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::std_ffi::CStr;
 use io_lifetimes::{BorrowedFd, FromFd, IntoFd};
 use libc::{c_char, c_int, c_long, ssize_t};
-use std::ffi::CStr;
 
 #[inline]
 pub(super) fn c_str(c: &CStr) -> *const c_char {

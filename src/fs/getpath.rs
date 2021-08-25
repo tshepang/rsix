@@ -1,6 +1,6 @@
+use crate::std_path::PathBuf;
 use crate::{imp, io};
 use io_lifetimes::AsFd;
-use std::path::PathBuf;
 
 /// `fcntl(fd, F_GETPATH)`
 ///

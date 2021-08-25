@@ -1,17 +1,13 @@
 use crate::io;
 use crate::path::DecInt;
-use std::borrow::Cow;
-use std::ffi::{CStr, CString, OsStr, OsString};
-#[cfg(target_os = "hermit")]
-use std::os::hermit::ext::ffi::{OsStrExt, OsStringExt};
-#[cfg(unix)]
-use std::os::unix::ffi::{OsStrExt, OsStringExt};
-#[cfg(target_os = "vxworks")]
-use std::os::vxworks::ext::ffi::{OsStrExt, OsStringExt};
-#[cfg(target_os = "wasi")]
-use std::os::wasi::ffi::{OsStrExt, OsStringExt};
-use std::path::{Component, Components, Iter, Path, PathBuf};
-use std::str;
+use crate::std_ffi::{CStr, CString, OsStr, OsString};
+use crate::std_os_ffi::{OsStrExt, OsStringExt};
+use crate::std_path::{Component, Components, Iter, Path, PathBuf};
+#[cfg(feature = "no_std_demo")]
+use crate::{AsOsStr, IntoOsString};
+use alloc::borrow::Cow;
+use alloc::vec::Vec;
+use core::str;
 
 /// A trait for passing path arguments.
 ///
@@ -45,6 +41,7 @@ pub trait Arg {
     fn as_str(&self) -> io::Result<&str>;
 
     /// Returns a potentially-lossy rendering of this string as a `Cow<str>`.
+    #[cfg(feature = "std")]
     fn to_string_lossy(&self) -> Cow<str>;
 
     /// Returns a view of this string as a maybe-owned [`CStr`].
@@ -80,6 +77,7 @@ impl Arg for &str {
         Ok(self)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         Cow::Borrowed(self)
@@ -127,12 +125,14 @@ impl Arg for &str {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arg for &String {
     #[inline]
     fn as_str(&self) -> io::Result<&str> {
         Ok(self)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         Cow::Borrowed(self)
@@ -178,12 +178,14 @@ impl Arg for &String {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arg for String {
     #[inline]
     fn as_str(&self) -> io::Result<&str> {
         Ok(self)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         Cow::Borrowed(self)
@@ -237,6 +239,7 @@ impl Arg for &OsStr {
         self.to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         OsStr::to_string_lossy(self)
@@ -290,6 +293,7 @@ impl Arg for &OsString {
         OsString::as_os_str(self).to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_os_str().to_string_lossy()
@@ -342,6 +346,7 @@ impl Arg for OsString {
         self.as_os_str().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_os_str().to_string_lossy()
@@ -395,6 +400,7 @@ impl Arg for &Path {
         self.as_os_str().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         Path::to_string_lossy(self)
@@ -451,6 +457,7 @@ impl Arg for &PathBuf {
             .ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_path().to_string_lossy()
@@ -503,6 +510,7 @@ impl Arg for PathBuf {
         self.as_os_str().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_os_str().to_string_lossy()
@@ -559,6 +567,7 @@ impl Arg for &CStr {
         self.to_str().map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         CStr::to_string_lossy(self)
@@ -609,6 +618,7 @@ impl Arg for &CString {
             .map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         CString::as_c_str(self).to_string_lossy()
@@ -657,6 +667,7 @@ impl Arg for CString {
         self.to_str().map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_c_str().to_string_lossy()
@@ -705,6 +716,7 @@ impl<'a> Arg for Cow<'a, str> {
         Ok(self)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         Cow::Borrowed(self)
@@ -761,6 +773,7 @@ impl<'a> Arg for Cow<'a, OsStr> {
         (**self).to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         (**self).to_string_lossy()
@@ -817,9 +830,10 @@ impl<'a> Arg for Cow<'a, CStr> {
         self.to_str().map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
-        let borrow: &CStr = std::borrow::Borrow::borrow(self);
+        let borrow: &CStr = core::borrow::Borrow::borrow(self);
         borrow.to_string_lossy()
     }
 
@@ -866,6 +880,7 @@ impl<'a> Arg for Component<'a> {
         self.as_os_str().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_os_str().to_string_lossy()
@@ -919,6 +934,7 @@ impl<'a> Arg for Components<'a> {
         self.as_path().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_path().to_string_lossy()
@@ -974,6 +990,7 @@ impl<'a> Arg for Iter<'a> {
         self.as_path().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         self.as_path().to_string_lossy()
@@ -1029,6 +1046,7 @@ impl Arg for &[u8] {
         str::from_utf8(self).map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self)
@@ -1082,6 +1100,7 @@ impl Arg for &Vec<u8> {
         str::from_utf8(self).map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self)
@@ -1135,6 +1154,7 @@ impl Arg for Vec<u8> {
         str::from_utf8(self).map_err(|_utf8_err| io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self)
@@ -1188,6 +1208,7 @@ impl Arg for DecInt {
         self.as_os_str().to_str().ok_or(io::Error::INVAL)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
     fn to_string_lossy(&self) -> Cow<str> {
         Path::to_string_lossy(self)

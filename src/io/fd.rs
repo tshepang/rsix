@@ -2,9 +2,9 @@
 
 use crate::imp;
 use crate::io::{self, OwnedFd};
-use io_lifetimes::AsFd;
 #[cfg(all(libc, not(any(target_os = "wasi", target_os = "fuchsia"))))]
-use std::ffi::OsString;
+use crate::std_ffi::OsString;
+use io_lifetimes::AsFd;
 
 #[cfg(not(target_os = "wasi"))]
 pub use imp::io::DupFlags;

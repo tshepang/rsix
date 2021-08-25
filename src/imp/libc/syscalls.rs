@@ -47,6 +47,7 @@ use super::io::MlockFlags;
 #[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "wasi")))]
 use super::io::PipeFlags;
 use super::io::PollFd;
+#[cfg(feature = "vectored")]
 #[cfg(any(target_os = "android", target_os = "linux"))]
 use super::io::ReadWriteFlags;
 #[cfg(not(any(target_os = "redox", target_os = "wasi")))]
@@ -80,6 +81,9 @@ use super::offset::libc_posix_fadvise;
 )))]
 use super::offset::libc_posix_fallocate;
 use super::offset::{libc_fstat, libc_fstatat, libc_lseek, libc_off_t, libc_pread, libc_pwrite};
+#[cfg(feature = "vectored")]
+use super::offset::{libc_preadv, libc_pwritev};
+#[cfg(feature = "vectored")]
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use super::offset::{libc_preadv2, libc_pwritev2};
 #[cfg(not(target_os = "wasi"))]
@@ -91,38 +95,37 @@ use crate::as_ptr;
 use crate::io::{self, OwnedFd, RawFd};
 #[cfg(not(target_os = "wasi"))]
 use crate::process::{Gid, Pid, Uid};
+use crate::std_ffi::CStr;
+#[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
+use crate::std_ffi::OsString;
+use crate::std_io::SeekFrom;
+use crate::std_os_ffi::OsStringExt;
+#[cfg(feature = "vectored")]
+use core::cmp::min;
+use core::convert::TryInto;
+#[cfg(target_os = "linux")]
+use core::mem::transmute;
+use core::mem::{size_of, MaybeUninit};
+#[cfg(not(any(target_os = "redox", target_os = "wasi",)))]
+use core::ptr::null_mut;
+#[cfg(feature = "vectored")]
+#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
+use core::sync::atomic::{AtomicUsize, Ordering};
 use errno::errno;
 use io_lifetimes::{AsFd, BorrowedFd};
 use libc::{c_int, c_void};
-use std::cmp::min;
-use std::convert::TryInto;
-use std::ffi::CStr;
-#[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
-use std::ffi::OsString;
-use std::io::{IoSlice, IoSliceMut, SeekFrom};
-#[cfg(target_os = "linux")]
-use std::mem::transmute;
-use std::mem::{size_of, MaybeUninit};
-#[cfg(all(unix, not(target_os = "fuchsia")))]
-use std::os::unix::ffi::OsStringExt;
-#[cfg(target_os = "wasi")]
-use std::os::wasi::ffi::OsStringExt;
-#[cfg(not(any(target_os = "redox", target_os = "wasi",)))]
-use std::ptr::null_mut;
-#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
-use std::sync::atomic::{AtomicUsize, Ordering};
+#[cfg(feature = "vectored")]
+use std::io::{IoSlice, IoSliceMut};
 #[cfg(not(target_os = "redox"))]
 use {
-    super::conv::c_str,
-    super::fs::AtFlags,
-    super::offset::{libc_openat, libc_preadv, libc_pwritev},
+    super::conv::c_str, super::fs::AtFlags, super::offset::libc_openat,
     crate::time::NanosleepRelativeResult,
 };
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 use {
     super::conv::nonnegative_ret,
     super::fs::{copyfile_state_t, CloneFlags, CopyfileFlags},
-    std::path::PathBuf,
+    crate::std_path::PathBuf,
 };
 #[cfg(any(target_os = "android", target_os = "linux"))]
 use {
@@ -185,28 +188,31 @@ pub(crate) fn pwrite(fd: BorrowedFd<'_>, buf: &[u8], offset: u64) -> io::Result<
     Ok(nwritten as usize)
 }
 
+#[cfg(feature = "vectored")]
 pub(crate) fn readv(fd: BorrowedFd<'_>, bufs: &[IoSliceMut]) -> io::Result<usize> {
     let nread = unsafe {
         ret_ssize_t(libc::readv(
             borrowed_fd(fd),
             bufs.as_ptr().cast::<libc::iovec>(),
-            min(bufs.len(), max_iov()) as c_int,
+            min(bufs.len(), max_iov()) as libc::c_int,
         ))?
     };
     Ok(nread as usize)
 }
 
+#[cfg(feature = "vectored")]
 pub(crate) fn writev(fd: BorrowedFd<'_>, bufs: &[IoSlice]) -> io::Result<usize> {
     let nwritten = unsafe {
         ret_ssize_t(libc::writev(
             borrowed_fd(fd),
             bufs.as_ptr().cast::<libc::iovec>(),
-            min(bufs.len(), max_iov()) as c_int,
+            min(bufs.len(), max_iov()) as libc::c_int,
         ))?
     };
     Ok(nwritten as usize)
 }
 
+#[cfg(feature = "vectored")]
 #[cfg(not(target_os = "redox"))]
 pub(crate) fn preadv(fd: BorrowedFd<'_>, bufs: &[IoSliceMut], offset: u64) -> io::Result<usize> {
     // Silently cast; we'll get `EINVAL` if the value is negative.
@@ -215,13 +221,14 @@ pub(crate) fn preadv(fd: BorrowedFd<'_>, bufs: &[IoSliceMut], offset: u64) -> io
         ret_ssize_t(libc_preadv(
             borrowed_fd(fd),
             bufs.as_ptr().cast::<libc::iovec>(),
-            min(bufs.len(), max_iov()) as c_int,
+            min(bufs.len(), max_iov()) as libc::c_int,
             offset,
         ))?
     };
     Ok(nread as usize)
 }
 
+#[cfg(feature = "vectored")]
 #[cfg(not(target_os = "redox"))]
 pub(crate) fn pwritev(fd: BorrowedFd<'_>, bufs: &[IoSlice], offset: u64) -> io::Result<usize> {
     // Silently cast; we'll get `EINVAL` if the value is negative.
@@ -230,13 +237,14 @@ pub(crate) fn pwritev(fd: BorrowedFd<'_>, bufs: &[IoSlice], offset: u64) -> io::
         ret_ssize_t(libc_pwritev(
             borrowed_fd(fd),
             bufs.as_ptr().cast::<libc::iovec>(),
-            min(bufs.len(), max_iov()) as c_int,
+            min(bufs.len(), max_iov()) as libc::c_int,
             offset,
         ))?
     };
     Ok(nwritten as usize)
 }
 
+#[cfg(feature = "vectored")]
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub(crate) fn preadv2(
     fd: BorrowedFd<'_>,
@@ -250,7 +258,7 @@ pub(crate) fn preadv2(
         ret_ssize_t(libc_preadv2(
             borrowed_fd(fd),
             bufs.as_ptr().cast::<libc::iovec>(),
-            min(bufs.len(), max_iov()) as c_int,
+            min(bufs.len(), max_iov()) as libc::c_int,
             offset,
             flags.bits(),
         ))?
@@ -260,6 +268,7 @@ pub(crate) fn preadv2(
 
 /// At present, `libc` only has `preadv2` defined for glibc. On other
 /// ABIs, `ReadWriteFlags` has no flags defined, and we use plain `preadv`.
+#[cfg(feature = "vectored")]
 #[cfg(any(
     target_os = "android",
     all(target_os = "linux", not(target_env = "gnu"))
@@ -275,6 +284,7 @@ pub(crate) fn preadv2(
     preadv(fd, bufs, offset)
 }
 
+#[cfg(feature = "vectored")]
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub(crate) fn pwritev2(
     fd: BorrowedFd<'_>,
@@ -288,7 +298,7 @@ pub(crate) fn pwritev2(
         ret_ssize_t(libc_pwritev2(
             borrowed_fd(fd),
             bufs.as_ptr().cast::<libc::iovec>(),
-            min(bufs.len(), max_iov()) as c_int,
+            min(bufs.len(), max_iov()) as libc::c_int,
             offset,
             flags.bits(),
         ))?
@@ -298,6 +308,7 @@ pub(crate) fn pwritev2(
 
 /// At present, `libc` only has `pwritev2` defined for glibc. On other
 /// ABIs, `ReadWriteFlags` has no flags defined, and we use plain `pwritev`.
+#[cfg(feature = "vectored")]
 #[cfg(any(
     target_os = "android",
     all(target_os = "linux", not(target_env = "gnu"))
@@ -316,9 +327,11 @@ pub(crate) fn pwritev2(
 // These functions are derived from Rust's library/std/src/sys/unix/fd.rs at
 // revision 108e90ca78f052c0c1c49c42a22c85620be19712.
 
+#[cfg(feature = "vectored")]
 #[cfg(not(any(target_os = "redox", target_env = "newlib")))]
 static LIM: AtomicUsize = AtomicUsize::new(0);
 
+#[cfg(feature = "vectored")]
 #[cfg(not(any(target_os = "redox", target_env = "newlib")))]
 #[inline]
 fn max_iov() -> usize {
@@ -330,6 +343,7 @@ fn max_iov() -> usize {
     lim
 }
 
+#[cfg(feature = "vectored")]
 #[cfg(not(any(target_os = "redox", target_env = "newlib")))]
 fn query_max_iov() -> usize {
     let ret = unsafe { libc::sysconf(libc::_SC_IOV_MAX) };
@@ -340,6 +354,7 @@ fn query_max_iov() -> usize {
     lim
 }
 
+#[cfg(feature = "vectored")]
 #[cfg(any(target_os = "redox", target_env = "newlib"))]
 #[inline]
 fn max_iov() -> usize {
@@ -353,7 +368,7 @@ pub(crate) fn exit_group(code: c_int) -> ! {
 }
 
 pub(crate) unsafe fn close(raw_fd: RawFd) {
-    let _ = libc::close(raw_fd as c_int);
+    let _ = libc::close(raw_fd as libc::c_int);
 }
 
 #[cfg(not(target_os = "redox"))]
@@ -981,7 +996,7 @@ struct OpenHow {
     resolve: u64,
 }
 #[cfg(any(target_os = "android", target_os = "linux"))]
-const SIZEOF_OPEN_HOW: usize = std::mem::size_of::<OpenHow>();
+const SIZEOF_OPEN_HOW: usize = core::mem::size_of::<OpenHow>();
 
 #[cfg(target_os = "linux")]
 pub(crate) fn sendfile(
@@ -1987,7 +2002,7 @@ pub(crate) fn getpath(fd: BorrowedFd<'_>) -> io::Result<PathBuf> {
     let l = buf.iter().position(|&c| c == 0).unwrap();
     buf.truncate(l as usize);
     buf.shrink_to_fit();
-    Ok(PathBuf::from(std::ffi::OsString::from_vec(buf)))
+    Ok(PathBuf::from(crate::std_ffi::OsString::from_vec(buf)))
 }
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]

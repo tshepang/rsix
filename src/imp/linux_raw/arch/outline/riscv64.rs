@@ -154,7 +154,7 @@ mod reorder {
     #[inline]
     #[must_use]
     pub(in crate::imp::linux_raw) unsafe fn syscall0_readonly(nr: SyscallNumber) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall0_readonly(u, u, u, u, u, u, u, nr)
     }
     #[inline]
@@ -163,7 +163,7 @@ mod reorder {
         nr: SyscallNumber,
         a0: ArgReg<A0>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall1(a0, u, u, u, u, u, u, nr)
     }
     #[inline]
@@ -172,7 +172,7 @@ mod reorder {
         nr: SyscallNumber,
         a0: ArgReg<A0>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall1_readonly(a0, u, u, u, u, u, u, nr)
     }
     #[inline]
@@ -181,7 +181,7 @@ mod reorder {
         nr: SyscallNumber,
         a0: ArgReg<A0>,
     ) -> ! {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall1_noreturn(a0, u, u, u, u, u, u, nr)
     }
     #[inline]
@@ -191,7 +191,7 @@ mod reorder {
         a0: ArgReg<A0>,
         a1: ArgReg<A1>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall2(a0, a1, u, u, u, u, u, nr)
     }
     #[inline]
@@ -201,7 +201,7 @@ mod reorder {
         a0: ArgReg<A0>,
         a1: ArgReg<A1>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall2_readonly(a0, a1, u, u, u, u, u, nr)
     }
     #[inline]
@@ -212,7 +212,7 @@ mod reorder {
         a1: ArgReg<A1>,
         a2: ArgReg<A2>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall3(a0, a1, a2, u, u, u, u, nr)
     }
     #[inline]
@@ -223,7 +223,7 @@ mod reorder {
         a1: ArgReg<A1>,
         a2: ArgReg<A2>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall3_readonly(a0, a1, a2, u, u, u, u, nr)
     }
     #[inline]
@@ -235,7 +235,7 @@ mod reorder {
         a2: ArgReg<A2>,
         a3: ArgReg<A3>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall4(a0, a1, a2, a3, u, u, u, nr)
     }
     #[inline]
@@ -247,7 +247,7 @@ mod reorder {
         a2: ArgReg<A2>,
         a3: ArgReg<A3>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall4_readonly(a0, a1, a2, a3, u, u, u, nr)
     }
     #[inline]
@@ -260,7 +260,7 @@ mod reorder {
         a3: ArgReg<A3>,
         a4: ArgReg<A4>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall5(a0, a1, a2, a3, a4, u, u, nr)
     }
     #[inline]
@@ -273,7 +273,7 @@ mod reorder {
         a3: ArgReg<A3>,
         a4: ArgReg<A4>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall5_readonly(a0, a1, a2, a3, a4, u, u, nr)
     }
     #[inline]
@@ -287,7 +287,7 @@ mod reorder {
         a4: ArgReg<A4>,
         a5: ArgReg<A5>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall6(a0, a1, a2, a3, a4, a5, u, nr)
     }
     #[inline]
@@ -301,7 +301,7 @@ mod reorder {
         a4: ArgReg<A4>,
         a5: ArgReg<A5>,
     ) -> RetReg<R0> {
-        let u = std::mem::MaybeUninit::uninit().assume_init();
+        let u = core::mem::MaybeUninit::uninit().assume_init();
         rsix_reordered_syscall6_readonly(a0, a1, a2, a3, a4, a5, u, nr)
     }
 }

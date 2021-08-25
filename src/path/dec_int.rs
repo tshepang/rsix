@@ -5,15 +5,12 @@
 #![allow(unsafe_code)]
 
 use crate::io::AsRawFd;
+use crate::std_ffi::{CStr, OsStr};
+use crate::std_os_ffi::OsStrExt;
+use crate::std_path::Path;
+use core::ops::Deref;
 use io_lifetimes::AsFd;
 use itoa::{fmt, Integer};
-use std::ffi::{CStr, OsStr};
-use std::ops::Deref;
-#[cfg(unix)]
-use std::os::unix::ffi::OsStrExt;
-#[cfg(target_os = "wasi")]
-use std::os::wasi::ffi::OsStrExt;
-use std::path::Path;
 
 /// Format an integer into a decimal `Path` component, without constructing a
 /// temporary `PathBuf` or `String`.
@@ -95,6 +92,10 @@ impl Deref for DecInt {
     #[inline]
     fn deref(&self) -> &Self::Target {
         let as_os_str: &OsStr = OsStrExt::from_bytes(&self.buf[..self.len]);
+
+        #[cfg(feature = "no_std_demo")]
+        let as_os_str = unix_str::UnixStr::from_bytes(as_os_str.as_bytes());
+
         Path::new(as_os_str)
     }
 }

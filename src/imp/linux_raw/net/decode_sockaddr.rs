@@ -4,8 +4,9 @@
 
 use super::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrUnix, SocketAddrV4, SocketAddrV6};
 use crate::as_ptr;
+use alloc::vec::Vec;
+use core::mem::size_of;
 use linux_raw_sys::general::{__kernel_sockaddr_storage, sockaddr};
-use std::mem::size_of;
 
 // This must match the header of `sockaddr`.
 #[repr(C)]
@@ -71,7 +72,7 @@ pub(crate) unsafe fn decode_sockaddr(storage: *const sockaddr, len: u32) -> Sock
                 let decode = *storage.cast::<linux_raw_sys::general::sockaddr_un>();
                 assert_eq!(
                     decode.sun_path[len as usize - 1 - offsetof_sun_path],
-                    b'\0' as std::os::raw::c_char
+                    b'\0' as crate::c_types::c_char
                 );
                 SocketAddr::Unix(
                     SocketAddrUnix::new(

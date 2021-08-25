@@ -5,6 +5,8 @@ use crate::fs::CloneFlags;
 #[cfg(any(linux_raw, all(libc, any(target_os = "android", target_os = "linux"))))]
 use crate::fs::RenameFlags;
 use crate::io::{self, OwnedFd};
+use crate::std_ffi::{CStr, OsString};
+use crate::std_os_ffi::OsStringExt;
 use crate::{imp, path};
 #[cfg(not(any(
     target_os = "ios",
@@ -16,11 +18,6 @@ use imp::fs::Dev;
 use imp::fs::{Access, AtFlags, Mode, OFlags, Stat};
 use imp::time::Timespec;
 use io_lifetimes::{AsFd, BorrowedFd};
-use std::ffi::{CStr, OsString};
-#[cfg(unix)]
-use std::os::unix::ffi::OsStringExt;
-#[cfg(target_os = "wasi")]
-use std::os::wasi::ffi::OsStringExt;
 
 /// `openat(dirfd, path, oflags, mode)`—Opens a file.
 ///

@@ -6,14 +6,11 @@
 //! kernel into `&str` references, which assumes that they're NUL-terminated.
 #![allow(unsafe_code)]
 
+use crate::c_types::c_char;
 use crate::imp;
-use std::ffi::{CStr, OsStr};
-use std::fmt;
-use std::os::raw::c_char;
-#[cfg(unix)]
-use std::os::unix::ffi::OsStrExt;
-#[cfg(target_os = "wasi")]
-use std::os::wasi::ffi::OsStrExt;
+use crate::std_ffi::{CStr, OsStr};
+use crate::std_os_ffi::OsStrExt;
+use core::fmt;
 
 /// `uname()`—Returns high-level information about the runtime OS and
 /// hardware.
