@@ -50,7 +50,7 @@ use super::reg::{ArgReg, SocketArg};
 use super::time::{ClockId, Timespec};
 use crate::io;
 use crate::io::{OwnedFd, RawFd};
-use crate::time::NanosleepRelativeResult;
+use crate::time::{Itimerspec, NanosleepRelativeResult, TimerfdFlags, TimerfdTimerFlags};
 use io_lifetimes::{AsFd, BorrowedFd};
 #[cfg(any(target_arch = "aarch64", target_arch = "riscv64"))]
 use linux_raw_sys::general::__NR_epoll_pwait;
@@ -96,8 +96,8 @@ use linux_raw_sys::general::{__NR_recv, __NR_send};
 use linux_raw_sys::v5_11::general::{__NR_openat2, open_how};
 use linux_raw_sys::v5_4::general::{
     __NR_copy_file_range, __NR_eventfd2, __NR_getrandom, __NR_memfd_create, __NR_preadv2,
-    __NR_pwritev2, __NR_renameat2, __NR_statx, __NR_userfaultfd, statx, F_GETPIPE_SZ, F_GET_SEALS,
-    F_SETPIPE_SZ,
+    __NR_pwritev2, __NR_renameat2, __NR_statx, __NR_timerfd_create, __NR_timerfd_gettime,
+    __NR_timerfd_settime, __NR_userfaultfd, statx, F_GETPIPE_SZ, F_GET_SEALS, F_SETPIPE_SZ,
 };
 use std::convert::TryInto;
 use std::ffi::CStr;
@@ -2970,5 +2970,45 @@ pub(crate) fn epoll_wait(
             c_int(timeout),
             zero(),
         ))
+    }
+}
+
+pub(crate) fn timerfd_create(clockid: ClockId, flags: TimerfdFlags) -> io::Result<OwnedFd> {
+    unsafe {
+        ret_owned_fd(syscall2(
+            nr(__NR_timerfd_create),
+            clockid_t(clockid),
+            c_uint(flags.bits()),
+        ))
+    }
+}
+
+pub(crate) fn timerfd_settime(
+    fd: BorrowedFd<'_>,
+    flags: TimerfdTimerFlags,
+    new_value: &Itimerspec,
+) -> io::Result<Itimerspec> {
+    let mut result = MaybeUninit::<Itimerspec>::uninit();
+    unsafe {
+        ret(syscall4(
+            nr(__NR_timerfd_settime),
+            borrowed_fd(fd),
+            c_uint(flags.bits()),
+            by_ref(new_value),
+            out(&mut result),
+        ))
+        .map(|()| result.assume_init())
+    }
+}
+
+pub(crate) fn timerfd_gettime(fd: BorrowedFd<'_>) -> io::Result<Itimerspec> {
+    let mut result = MaybeUninit::<Itimerspec>::uninit();
+    unsafe {
+        ret(syscall2(
+            nr(__NR_timerfd_gettime),
+            borrowed_fd(fd),
+            out(&mut result),
+        ))
+        .map(|()| result.assume_init())
     }
 }
